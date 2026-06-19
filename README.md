@@ -44,7 +44,7 @@ Ao longo do processo, dois problemas reais de infraestrutura foram diagnosticado
      ┌────────┴───────┐ ┌─────┴──────┐ ┌───────┴────────┐ ┌──────┴───────┐
      │  Kali Linux     │ │  Wazuh Mgr  │ │ Windows Server  │ │ Metasploit-  │
      │  10.10.10.20│ │  (Ubuntu)   │ │      2025        │ │  able2       │
-     │  Suricata 8.0.5 │ │192.168.220. │ │10.10.10.40    │ │192.168.220.  │
+     │  Suricata 8.0.5 │ │10.10.10. │ │10.10.10.40    │ │10.10.10.  │
      │  Juice Shop     │ │     103     │ │Sysmon + Wazuh    │ │     152      │
      │  (Docker :3000) │ │             │ │     Agent        │ │  (DHCP)      │
      └─────────────────┘ └─────────────┘ └──────────────────┘ └──────────────┘
@@ -408,6 +408,18 @@ Detecção adequada para esse vetor exigiria controles client-side (CSP, extens�
 - pfSense CE
 - VMware Workstation
 
+
+---
+
+## Evidências
+
+![Agentes Wazuh ativos](01-agents-active.png)
+
+![Threat Hunting win-srv01](02-winsrv01-threat-hunting.png)
+
+![Shell reversa detectada](03-metasploit-shell-detected.png)
+
+![SQLi detectado por regra customizada](04-sqli-custom-rule-detected.png)
 
 ---
 
