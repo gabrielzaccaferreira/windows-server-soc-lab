@@ -1,0 +1,57 @@
+﻿# OS
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE/Editor
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Sensitive data (NEVER commit these)
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+credentials/
+secrets/
+.env
+.env.local
+.env*.local
+token.txt
+auth.token
+api_key.txt
+
+# Private configs
+ossec.conf.bak
+suricata.yaml.bak
+wazuh-agent.conf.bak
+
+# Logs (can contain sensitive info)
+*.log
+logs/
+*.err
+
+# Build/generated
+dist/
+build/
+*.tar.gz
+*.zip
+
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+
+# Temporary files
+temp/
+tmp/
+*.tmp
+
+# Windows specific
+Thumbs.db
+desktop.ini
